@@ -395,42 +395,58 @@ int lept_parse(lept_value *v, const char *json) {
 }
 
 static void lept_stringify_string(lept_context *c, const char *s, size_t len) {
-    PUTC(c, '\"');
-    char *p = s;
+    assert(s != NULL);
+    static const char hex_digits[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                      '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+    size_t size = len * 6 + 2;
+    char *p, *head;
+    p = head = lept_context_push(c, size);
+    *p++ = '"';
     for (size_t i = 0; i < len; i++) {
         char ch = s[i];
         switch (ch) {
         case '\"':
-            PUTS(c, "\\\"", 2);
+            *p++ = '\\';
+            *p++ = '\"';
             break;
         case '\\':
-            PUTS(c, "\\\\", 2);
+            *p++ = '\\';
+            *p++ = '\\';
             break;
         case '\b':
-            PUTS(c, "\\b", 2);
+            *p++ = '\\';
+            *p++ = 'b';
             break;
         case '\f':
-            PUTS(c, "\\f", 2);
+            *p++ = '\\';
+            *p++ = 'f';
             break;
         case '\n':
-            PUTS(c, "\\n", 2);
+            *p++ = '\\';
+            *p++ = 'n';
             break;
         case '\r':
-            PUTS(c, "\\r", 2);
+            *p++ = '\\';
+            *p++ = 'r';
             break;
         case '\t':
-            PUTS(c, "\\t", 2);
+            *p++ = '\\';
+            *p++ = 't';
             break;
         default:
             if (ch < 0x20) {
-                char buffer[7];
-                sprintf(buffer, "\\u%04X", ch);
-                PUTS(c, buffer, 6);
+                *p++ = '\\';
+                *p++ = 'u';
+                *p++ = '0';
+                *p++ = '0';
+                *p++ = hex_digits[ch >> 4];
+                *p++ = hex_digits[ch & 15];
             } else
-                PUTC(c, ch);
+                *p++ = s[i];
         }
     }
-    PUTC(c, '\"');
+    *p++ = '"';
+    c->top -= size - (p - head);
 }
 
 static void lept_stringify_value(lept_context *c, const lept_value *v) {
